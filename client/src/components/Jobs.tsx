@@ -1,96 +1,96 @@
-'use client';
+"use client"
 
-import { useEffect, useState } from 'react';
-import axios from 'axios';
-import JobApplication from './JobApplication';
+import type React from "react"
+
+import { useEffect, useState } from "react"
+import axios from "axios"
+import JobApplication from "./JobApplication"
 
 interface Company {
-  _id: string;
-  name: string;
+  _id: string
+  name: string
 }
 
 interface Job {
-  _id: string;
-  title: string;
-  description: string;
-  requiredSkills: string[];
-  budget: number;
-  companyId: Company;
-  status: string;
+  _id: string
+  title: string
+  description: string
+  requiredSkills: string[]
+  budget: number
+  companyId: Company
+  status: string
 }
 
 interface Application {
-  _id: string;
-  jobId: string;
-  status: string;
+  _id: string
+  jobId: string
+  status: string
 }
 
 const Jobs = () => {
-  const [jobs, setJobs] = useState<Job[]>([]);
-  const [selectedJob, setSelectedJob] = useState<Job | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showApplication, setShowApplication] = useState(false);
-  const [myApplications, setMyApplications] = useState<Application[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [jobs, setJobs] = useState<Job[]>([])
+  const [selectedJob, setSelectedJob] = useState<Job | null>(null)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [showApplication, setShowApplication] = useState(false)
+  const [myApplications, setMyApplications] = useState<Application[]>([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        setLoading(true);
+        setLoading(true)
         // Fetch jobs
-        const jobsRes = await axios.get('/api/jobs');
-        setJobs(jobsRes.data);
-        
+        const jobsRes = await axios.get("/api/jobs")
+        setJobs(jobsRes.data)
+
         // Fetch user's applications
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem("token")
         if (token) {
-          const applicationsRes = await axios.get('/api/applications/my-applications', {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-          setMyApplications(applicationsRes.data);
+          const applicationsRes = await axios.get("/api/applications/my-applications", {
+            headers: { Authorization: `Bearer ${token}` },
+          })
+          setMyApplications(applicationsRes.data)
         }
       } catch (error) {
-        console.error('Error fetching data:', error);
+        console.error("Error fetching data:", error)
       } finally {
-        setLoading(false);
+        setLoading(false)
       }
-    };
+    }
 
-    fetchData();
-  }, []);
+    fetchData()
+  }, [])
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(e.target.value);
-  };
+    setSearchQuery(e.target.value)
+  }
 
-  const filteredJobs = jobs.filter(job =>
-    job.title.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredJobs = jobs.filter((job) => job.title.toLowerCase().includes(searchQuery.toLowerCase()))
 
   const hasApplied = (jobId: string) => {
-    return myApplications.some(app => app.jobId === jobId);
-  };
+    return myApplications.some((app) => app.jobId === jobId)
+  }
 
   const handleApplicationSubmit = async () => {
     try {
       // Refresh user's applications
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem("token")
       if (token) {
-        const res = await axios.get('/api/applications/my-applications', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        setMyApplications(res.data);
+        const res = await axios.get("/api/applications/my-applications", {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        setMyApplications(res.data)
       }
-      
-      setShowApplication(false);
-      alert('Application submitted successfully!');
+
+      setShowApplication(false)
+      alert("Application submitted successfully!")
     } catch (error) {
-      console.error('Error refreshing applications:', error);
+      console.error("Error refreshing applications:", error)
     }
-  };
+  }
 
   if (loading) {
-    return <div className="flex justify-center items-center h-full">Loading...</div>;
+    return <div className="flex justify-center items-center h-full">Loading...</div>
   }
 
   return (
@@ -106,22 +106,22 @@ const Jobs = () => {
         />
 
         <ul className="space-y-3">
-          {filteredJobs.map(job => (
+          {filteredJobs.map((job) => (
             <li
               key={job._id}
               onClick={() => {
-                setSelectedJob(job);
-                setShowApplication(false);
+                setSelectedJob(job)
+                setShowApplication(false)
               }}
               className={`p-4 border rounded-lg cursor-pointer ${
-                selectedJob?._id === job._id ? 'bg-blue-500 text-white' : 'bg-white'
+                selectedJob?._id === job._id ? "bg-blue-500 text-white" : "bg-white"
               }`}
             >
               <h3 className="font-semibold">{job.title}</h3>
-              <p className="text-sm text-gray-600">{job.requiredSkills.join(', ')}</p>
+              <p className="text-sm text-gray-600">{job.requiredSkills.join(", ")}</p>
               {hasApplied(job._id) && (
-                <span className="inline-block bg-green-100 text-green-800 text-xs px-2 py-1 rounded mt-1">
-                  Applied
+                <span className="inline-block bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded mt-1">
+                  Application under review
                 </span>
               )}
             </li>
@@ -140,7 +140,7 @@ const Jobs = () => {
             <div className="mt-4">
               <h4 className="font-semibold">Required Skills:</h4>
               <ul className="list-disc list-inside text-gray-700">
-                {selectedJob.requiredSkills.map(skill => (
+                {selectedJob.requiredSkills.map((skill) => (
                   <li key={skill}>{skill}</li>
                 ))}
               </ul>
@@ -149,23 +149,16 @@ const Jobs = () => {
             <p className="mt-4 font-semibold">Budget: ${selectedJob.budget}</p>
 
             {showApplication ? (
-              <JobApplication 
-                jobId={selectedJob._id} 
-                onApplicationSubmit={handleApplicationSubmit} 
-              />
+              <JobApplication jobId={selectedJob._id} onApplicationSubmit={handleApplicationSubmit} />
+            ) : hasApplied(selectedJob._id) ? (
+              <div className="mt-6 bg-yellow-50 text-yellow-700 p-4 rounded-md">Your application is under review</div>
             ) : (
-              hasApplied(selectedJob._id) ? (
-                <div className="mt-6 bg-green-50 text-green-700 p-4 rounded-md">
-                  You have already applied for this job
-                </div>
-              ) : (
-                <button
-                  onClick={() => setShowApplication(true)}
-                  className="mt-6 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700"
-                >
-                  Apply for this Job
-                </button>
-              )
+              <button
+                onClick={() => setShowApplication(true)}
+                className="mt-6 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700"
+              >
+                Apply for this Job
+              </button>
             )}
           </div>
         ) : (
@@ -173,7 +166,8 @@ const Jobs = () => {
         )}
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default Jobs;
+export default Jobs
+
