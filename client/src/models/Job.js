@@ -9,7 +9,7 @@ const JobSchema = new mongoose.Schema({
     status: { type: String, enum: ['open', 'in_progress', 'completed'], default: 'open' },
     applicants: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     selectedFreelancer: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-});
+}, { timestamps: true });
 
 const Job = mongoose.models.Job || mongoose.model("Job", JobSchema);
 export default Job;

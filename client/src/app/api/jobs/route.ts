@@ -6,14 +6,15 @@ import { getUserFromToken } from '@/lib/auth'
 export async function GET() {
     try {
         await connectToDatabase();
-        const jobs = await Job.find().populate('companyId', 'name'); // Fetch company details if needed
+        const jobs = await Job.find()
+            .populate('companyId', 'name')
+            .sort({ createdAt: -1 });
         return NextResponse.json(jobs);
     } catch (error) {
         console.error('Error fetching jobs:', error);
         return NextResponse.json({ message: 'Failed to fetch jobs' }, { status: 500 });
     }
 }
-
 
 export async function POST(req: NextRequest) {
     try {
