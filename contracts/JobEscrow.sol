@@ -132,3 +132,4 @@ contract ReputationNFT is ERC721URIStorage {
         emit ReputationIssued(_freelancer, tokenIdCounter);
     }
 }
+
