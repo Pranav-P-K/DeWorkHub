@@ -17,8 +17,6 @@ export default function Login() {
     const [isLoading, setIsLoading] = useState(false)
     const router = useRouter()
 
-    console.log(process.env.MONGODB_URI);
-
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);

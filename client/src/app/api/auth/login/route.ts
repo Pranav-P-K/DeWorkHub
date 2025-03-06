@@ -4,6 +4,8 @@ import jwt from "jsonwebtoken"
 import { connectToDatabase } from "@/lib/db"
 import User from "@/models/User"
 
+const SECRET_KEY = process.env.JWT_SECRET || '123-456-7890';
+
 export async function POST(req: Request) {
   try {
     await connectToDatabase()
@@ -19,7 +21,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Invalid credentials" }, { status: 400 })
     }
 
-    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET!, { expiresIn: "1h" })
+    const token = jwt.sign(
+      { id: user._id, email: user.email, role: user.role }, // Ensure `email` is included
+      SECRET_KEY,
+      { expiresIn: '1h' }
+    );
 
     return NextResponse.json({
       token,
