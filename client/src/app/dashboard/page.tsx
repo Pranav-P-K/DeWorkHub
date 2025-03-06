@@ -4,7 +4,6 @@ import React, { useEffect, useState } from 'react';
 import Navbar from '@/components/Navbar';
 import Jobs from '@/components/Jobs';
 import PostJobs from '@/components/PostJobs';
-import Hire from '@/components/Hire';
 import axios from 'axios';
 
 interface User {
@@ -16,7 +15,6 @@ interface User {
 const Dashboard = () => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<string>('');
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -33,12 +31,6 @@ const Dashboard = () => {
 
         setUser(res.data.user);
         
-        // Set default active tab based on user role
-        if (res.data.user.role === 'Freelancer') {
-          setActiveTab('jobs');
-        } else if (res.data.user.role === 'Company') {
-          setActiveTab('post');
-        }
       } catch (error) {
         console.error('Error fetching user:', error);
       } finally {
@@ -61,8 +53,7 @@ const Dashboard = () => {
     }
     
     if (user.role === 'Company') {
-      if (activeTab === 'post') return <PostJobs />;
-      if (activeTab === 'hire') return <Hire />;
+      return <PostJobs />;
     }
     
     return <p>No role assigned</p>;
@@ -70,35 +61,7 @@ const Dashboard = () => {
 
   return (
     <div>
-      <Navbar />
-      
-      {user?.role === 'Company' && (
-        <div className="bg-gray-100 py-3 px-6 border-b">
-          <div className="flex space-x-4">
-            <button
-              onClick={() => setActiveTab('post')}
-              className={`px-4 py-2 ${
-                activeTab === 'post' 
-                  ? 'bg-blue-600 text-white' 
-                  : 'bg-white text-gray-800'
-              } rounded-md`}
-            >
-              Post Jobs
-            </button>
-            <button
-              onClick={() => setActiveTab('hire')}
-              className={`px-4 py-2 ${
-                activeTab === 'hire' 
-                  ? 'bg-blue-600 text-white' 
-                  : 'bg-white text-gray-800'
-              } rounded-md`}
-            >
-              Hire Talent
-            </button>
-          </div>
-        </div>
-      )}
-      
+      <Navbar />   
       <div className="p-6">
         {renderContent()}
       </div>

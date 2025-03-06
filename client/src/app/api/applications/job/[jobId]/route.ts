@@ -4,12 +4,12 @@ import Application from '@/models/Application';
 import Job from '@/models/Job';
 import { getUserFromToken } from '@/lib/auth';
 
-export async function GET(req: NextRequest, { params }: { params: { jobId: string } }) {
+export async function GET(req: NextRequest, context: { params: { jobId: string } }) {
     try {
         await connectToDatabase();
         
-        // Get jobId from params
-        const { jobId } = params;
+        // Wait for params to be resolved
+        const { jobId } = context.params;
         
         // Authenticate user
         const user = await getUserFromToken(req);

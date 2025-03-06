@@ -21,15 +21,12 @@ const Navbar = () => {
         const fetchUser = async () => {
             try {
                 const token = localStorage.getItem('token');
-                console.log('Token:', token); // Debugging line
 
                 if (!token) return;
 
                 const res = await axios.get('/api/auth/user', {
                     headers: { Authorization: `Bearer ${token}` }
                 });
-
-                console.log('User Data:', res.data); // Debugging line
 
                 setUser(res.data.user);
             } catch (error) {

@@ -8,18 +8,15 @@ const SECRET_KEY = process.env.JWT_SECRET || '123-456-7890';
 export async function GET(req: NextRequest) {
     try {
       const authHeader = req.headers.get('Authorization');
-      console.log('Authorization Header:', authHeader); // Debugging
   
       if (!authHeader || !authHeader.startsWith('Bearer ')) {
         return NextResponse.json({ error: 'Unauthorized: Missing token' }, { status: 401 });
       }
   
       const token = authHeader.split(' ')[1];
-      console.log('Extracted Token:', token); // Debugging
   
       // Verify the token
       const decoded = jwt.verify(token, SECRET_KEY) as { email: string };
-      console.log('Decoded Token:', decoded); // Debugging
   
       if (!decoded?.email) {
         return NextResponse.json({ error: 'Unauthorized: Invalid token' }, { status: 401 });
