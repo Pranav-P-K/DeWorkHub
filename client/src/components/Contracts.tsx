@@ -1,8 +1,10 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import axios from "axios"
-import { StarIcon } from "lucide-react"
+import { StarIcon, DollarSign, Calendar, AlertTriangle, Check, X, ChevronRight, Loader2 } from "lucide-react"
+import { motion, AnimatePresence } from "framer-motion"
 
 interface Job {
   _id: string
@@ -39,6 +41,9 @@ const Contracts = () => {
   const [rating, setRating] = useState<number>(5)
   const [feedback, setFeedback] = useState<string>("")
   const [disputeReason, setDisputeReason] = useState<string>("")
+  const [activeTab, setActiveTab] = useState<"all" | "ongoing" | "completed" | "disputed">("all")
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const modalRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const fetchUserAndContracts = async () => {
@@ -73,18 +78,39 @@ const Contracts = () => {
     fetchUserAndContracts()
   }, [])
 
-  const handlePayment = async (contractId: string) => {
-    try {
-      const token = localStorage.getItem("token")
-      await axios.post("/api/contracts/payment", { contractId }, { headers: { Authorization: `Bearer ${token}` } })
+  useEffect(() => {
+    // Close modal when clicking outside
+    const handleClickOutside = (event: MouseEvent) => {
+      if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
+        setSelectedContract(null)
+        setDisputeReason("")
+      }
+    }
+    
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [])
 
-      // Refresh contracts
+  const refreshContracts = async () => {
+    try {
+      setIsRefreshing(true)
+      const token = localStorage.getItem("token")
       const contractsRes = await axios.get("/api/contracts", {
         headers: { Authorization: `Bearer ${token}` },
       })
       setContracts(contractsRes.data)
+      setIsRefreshing(false)
+    } catch (error) {
+      console.error("Error refreshing contracts:", error)
+      setIsRefreshing(false)
+    }
+  }
 
-      alert("Payment processed successfully")
+  const handlePayment = async (contractId: string) => {
+    try {
+      const token = localStorage.getItem("token")
+      await axios.post("/api/contracts/payment", { contractId }, { headers: { Authorization: `Bearer ${token}` } })
+      await refreshContracts()
     } catch (error) {
       console.error("Error processing payment:", error)
       alert("Failed to process payment")
@@ -99,18 +125,11 @@ const Contracts = () => {
         { contractId, status: "completed", rating, feedback },
         { headers: { Authorization: `Bearer ${token}` } },
       )
-
-      // Refresh contracts
-      const contractsRes = await axios.get("/api/contracts", {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      setContracts(contractsRes.data)
-
+      
+      await refreshContracts()
       setSelectedContract(null)
       setRating(5)
       setFeedback("")
-
-      alert("Contract marked as completed")
     } catch (error) {
       console.error("Error completing contract:", error)
       alert("Failed to complete contract")
@@ -125,44 +144,35 @@ const Contracts = () => {
         { contractId, reason: disputeReason },
         { headers: { Authorization: `Bearer ${token}` } },
       )
-
-      // Refresh contracts
-      const contractsRes = await axios.get("/api/contracts", {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      setContracts(contractsRes.data)
-
+      
+      await refreshContracts()
       setSelectedContract(null)
       setDisputeReason("")
-
-      alert("Dispute filed successfully")
     } catch (error) {
       console.error("Error filing dispute:", error)
       alert("Failed to file dispute")
     }
   }
 
-  const renderContractStatus = (status: string) => {
+  const filteredContracts = contracts.filter(contract => {
+    if (activeTab === "all") return true;
+    return contract.status === activeTab;
+  });
+
+  const getStatusColors = (status: string) => {
     switch (status) {
       case "ongoing":
-        return <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">Ongoing</span>
+        return "bg-blue-600 text-white";
       case "completed":
-        return <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs">Completed</span>
+        return "bg-emerald-600 text-white";
       case "disputed":
-        return <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-xs">Disputed</span>
-      default:
-        return <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded text-xs">{status}</span>
-    }
-  }
-
-  const renderPaymentStatus = (status: string) => {
-    switch (status) {
+        return "bg-red-600 text-white";
       case "pending":
-        return <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs">Payment Pending</span>
+        return "bg-amber-600 text-white";
       case "paid":
-        return <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs">Paid</span>
+        return "bg-green-600 text-white";
       default:
-        return <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded text-xs">{status}</span>
+        return "bg-gray-600 text-white";
     }
   }
 
@@ -170,48 +180,65 @@ const Contracts = () => {
     return (
       <div className="flex items-center space-x-1 mt-2">
         {[1, 2, 3, 4, 5].map((star) => (
-          <StarIcon
+          <motion.div
             key={star}
-            className={`h-5 w-5 cursor-pointer ${star <= rating ? "text-yellow-500 fill-yellow-500" : "text-gray-300"}`}
-            onClick={() => setRating(star)}
-          />
+            whileHover={{ scale: 1.2 }}
+            whileTap={{ scale: 0.9 }}
+          >
+            <StarIcon
+              className={`h-6 w-6 cursor-pointer ${
+                star <= rating ? "text-yellow-500 fill-yellow-500" : "text-gray-300"
+              }`}
+              onClick={() => setRating(star)}
+            />
+          </motion.div>
         ))}
       </div>
     )
   }
 
   const renderContractActions = (contract: Contract) => {
-    if (userRole !== "Company") return null
+    if (userRole !== "Company") return null;
 
     if (contract.status === "ongoing") {
       return (
         <div className="mt-4 space-y-2">
           {contract.paymentStatus === "pending" && (
-            <button
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
               onClick={() => handlePayment(contract._id)}
-              className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 w-full"
+              className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-4 py-2 rounded-lg shadow-md hover:shadow-lg w-full flex items-center justify-center gap-2 font-medium"
             >
+              <DollarSign className="h-4 w-4" />
               Process Payment
-            </button>
+            </motion.button>
           )}
 
           {contract.paymentStatus === "paid" && (
             <>
-              <button
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => setSelectedContract(contract)}
-                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 w-full"
+                className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2 rounded-lg shadow-md hover:shadow-lg w-full flex items-center justify-center gap-2 font-medium"
               >
+                <Check className="h-4 w-4" />
                 Complete Contract
-              </button>
-              <button
+              </motion.button>
+              
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => {
                   setSelectedContract(contract)
                   setDisputeReason("")
                 }}
-                className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 w-full"
+                className="bg-gradient-to-r from-red-600 to-pink-600 text-white px-4 py-2 rounded-lg shadow-md hover:shadow-lg w-full flex items-center justify-center gap-2 font-medium"
               >
+                <AlertTriangle className="h-4 w-4" />
                 File Dispute
-              </button>
+              </motion.button>
             </>
           )}
         </div>
@@ -222,122 +249,349 @@ const Contracts = () => {
   }
 
   if (loading) {
-    return <div className="flex justify-center items-center h-screen">Loading...</div>
+    return (
+      <div className="flex flex-col justify-center items-center h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          className="mb-4"
+        >
+          <Loader2 className="h-12 w-12 text-blue-600" />
+        </motion.div>
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.5 }}
+          className="text-lg text-blue-800 font-medium"
+        >
+          Loading your contracts...
+        </motion.p>
+      </div>
+    )
   }
 
   if (error) {
-    return <div className="text-red-600 p-4">{error}</div>
+    return (
+      <motion.div 
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="p-6 max-w-md mx-auto mt-12 bg-red-50 border border-red-200 rounded-lg shadow-md"
+      >
+        <div className="flex items-center text-red-600 mb-2">
+          <AlertTriangle className="h-6 w-6 mr-2" />
+          <h2 className="font-bold text-lg">Error</h2>
+        </div>
+        <p className="text-red-700">{error}</p>
+        <motion.button
+          whileHover={{ scale: 1.03 }}
+          whileTap={{ scale: 0.97 }}
+          className="mt-4 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+          onClick={() => window.location.reload()}
+        >
+          Try Again
+        </motion.button>
+      </motion.div>
+    )
   }
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-6">{userRole === "Freelancer" ? "My Contracts" : "Manage Contracts"}</h1>
+    <div className="p-6 min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-800 bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">
+            {userRole === "Freelancer" ? "My Contracts" : "Manage Contracts"}
+          </h1>
+          
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={refreshContracts}
+            disabled={isRefreshing}
+            className="px-4 py-2 bg-white rounded-full shadow hover:shadow-md flex items-center gap-2 text-blue-600"
+          >
+            <motion.div
+              animate={isRefreshing ? { rotate: 360 } : {}}
+              transition={{ duration: 1, repeat: isRefreshing ? Infinity : 0, ease: "linear" }}
+            >
+              <Loader2 className="h-4 w-4" />
+            </motion.div>
+            Refresh
+          </motion.button>
+        </div>
 
-      {contracts.length === 0 ? (
-        <p className="text-gray-600">No contracts found</p>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {contracts.map((contract) => (
-            <div key={contract._id} className="border rounded-lg shadow-sm p-4 bg-white">
-              <h2 className="font-bold text-lg">{contract.jobId.title}</h2>
-
-              <div className="mt-2 space-y-1">
-                <p className="text-sm">
-                  <span className="font-medium">{userRole === "Freelancer" ? "Client:" : "Freelancer:"}</span>{" "}
-                  {userRole === "Freelancer" ? contract.companyId.name : contract.freelancerId.name}
-                </p>
-                <p className="text-sm">
-                  <span className="font-medium">Budget:</span> ${contract.escrowAmount}
-                </p>
-                <p className="text-sm">
-                  <span className="font-medium">Started:</span> {new Date(contract.createdAt).toLocaleDateString()}
-                </p>
-              </div>
-
-              <div className="mt-3 flex flex-wrap gap-2">
-                {renderContractStatus(contract.status)}
-                {renderPaymentStatus(contract.paymentStatus)}
-              </div>
-
-              {contract.disputeReason && (
-                <div className="mt-3 p-2 bg-red-50 rounded text-sm">
-                  <p className="font-medium text-red-800">Dispute Reason:</p>
-                  <p className="text-red-700">{contract.disputeReason}</p>
-                </div>
-              )}
-
-              {renderContractActions(contract)}
-            </div>
+        {/* Tab Navigation */}
+        <div className="flex mb-6 space-x-1 bg-white p-1 rounded-lg shadow-sm">
+          {["all", "ongoing", "completed", "disputed"].map((tab) => (
+            <motion.button
+              key={tab}
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={() => setActiveTab(tab as any)}
+              className={`flex-1 py-2 px-4 rounded-md font-medium text-sm transition-all capitalize ${
+                activeTab === tab
+                  ? "bg-blue-600 text-white shadow-sm"
+                  : "text-gray-600 hover:bg-gray-100"
+              }`}
+            >
+              {tab}
+            </motion.button>
           ))}
         </div>
+      </motion.div>
+
+      {filteredContracts.length === 0 ? (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="text-center py-16 bg-white rounded-xl shadow-sm"
+        >
+          <div className="mx-auto w-24 h-24 mb-4 flex items-center justify-center rounded-full bg-blue-50">
+            <Calendar className="h-12 w-12 text-blue-300" />
+          </div>
+          <h3 className="text-xl font-medium text-gray-700 mb-2">No contracts found</h3>
+          <p className="text-gray-500 max-w-md mx-auto">
+            {activeTab === "all" 
+              ? "You don't have any contracts yet." 
+              : `You don't have any ${activeTab} contracts.`}
+          </p>
+        </motion.div>
+      ) : (
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5, staggerChildren: 0.1 }}
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+        >
+          <AnimatePresence>
+            {filteredContracts.map((contract, index) => (
+              <motion.div
+                key={contract._id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ delay: index * 0.05 }}
+                whileHover={{ y: -5, boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1)" }}
+                className="bg-white rounded-xl overflow-hidden shadow hover:shadow-lg transition-all duration-300"
+              >
+                <div className={`h-2 ${getStatusColors(contract.status)}`}></div>
+                <div className="p-5">
+                  <h2 className="font-bold text-lg text-gray-800 line-clamp-1">{contract.jobId.title}</h2>
+
+                  <div className="mt-4 space-y-3">
+                    <div className="flex items-center">
+                      <div className="bg-blue-100 p-2 rounded-full mr-3">
+                        <ChevronRight className="h-4 w-4 text-blue-600" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 font-medium">
+                          {userRole === "Freelancer" ? "CLIENT" : "FREELANCER"}
+                        </p>
+                        <p className="font-medium">
+                          {userRole === "Freelancer" ? contract.companyId.name : contract.freelancerId.name}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center">
+                      <div className="bg-green-100 p-2 rounded-full mr-3">
+                        <DollarSign className="h-4 w-4 text-green-600" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 font-medium">BUDGET</p>
+                        <p className="font-medium">${contract.escrowAmount.toLocaleString()}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center">
+                      <div className="bg-purple-100 p-2 rounded-full mr-3">
+                        <Calendar className="h-4 w-4 text-purple-600" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 font-medium">STARTED</p>
+                        <p className="font-medium">{new Date(contract.createdAt).toLocaleDateString()}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColors(contract.status)}`}>
+                      {contract.status.charAt(0).toUpperCase() + contract.status.slice(1)}
+                    </span>
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColors(contract.paymentStatus)}`}>
+                      {contract.paymentStatus.charAt(0).toUpperCase() + contract.paymentStatus.slice(1)}
+                    </span>
+                  </div>
+
+                  {contract.disputeReason && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      className="mt-4 p-3 bg-red-50 rounded-lg border border-red-100"
+                    >
+                      <div className="flex items-center mb-1">
+                        <AlertTriangle className="h-4 w-4 text-red-600 mr-1" />
+                        <p className="font-medium text-red-700 text-sm">Dispute Reason:</p>
+                      </div>
+                      <p className="text-red-600 text-sm">{contract.disputeReason}</p>
+                    </motion.div>
+                  )}
+
+                  {renderContractActions(contract)}
+                </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </motion.div>
       )}
 
       {/* Complete Contract Modal */}
-      {selectedContract && !disputeReason && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
-            <h2 className="text-xl font-bold mb-4">Complete Contract</h2>
-            <p className="mb-4">Please rate the freelancers work and provide feedback:</p>
+      <AnimatePresence>
+        {selectedContract && !disputeReason && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+          >
+            <motion.div
+              ref={modalRef}
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="bg-white rounded-2xl p-6 max-w-md w-full shadow-xl"
+            >
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold text-gray-800">Complete Contract</h2>
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => setSelectedContract(null)}
+                  className="p-1 rounded-full hover:bg-gray-100"
+                >
+                  <X className="h-5 w-5 text-gray-500" />
+                </motion.button>
+              </div>
+              
+              <div className="bg-blue-50 p-3 rounded-lg mb-4">
+                <p className="text-blue-800 text-sm">
+                  You are completing the contract {selectedContract.jobId.title} with{" "}
+                  <span className="font-medium">{selectedContract.freelancerId.name}</span>
+                </p>
+              </div>
+              
+              <h3 className="font-medium text-gray-700 mb-2">Rate the freelancer:</h3>
+              {renderStarRating()}
 
-            {renderStarRating()}
+              <h3 className="font-medium text-gray-700 mt-4 mb-2">Provide feedback:</h3>
+              <textarea
+                value={feedback}
+                onChange={(e) => setFeedback(e.target.value)}
+                placeholder="Share your experience working with this freelancer..."
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                rows={4}
+              />
 
-            <textarea
-              value={feedback}
-              onChange={(e) => setFeedback(e.target.value)}
-              placeholder="Provide feedback about the freelancer's work..."
-              className="w-full p-2 border rounded mt-4"
-              rows={4}
-            />
-
-            <div className="flex justify-end space-x-3 mt-6">
-              <button onClick={() => setSelectedContract(null)} className="px-4 py-2 border rounded">
-                Cancel
-              </button>
-              <button
-                onClick={() => handleCompleteContract(selectedContract._id)}
-                className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-              >
-                Complete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+              <div className="flex justify-end space-x-3 mt-6">
+                <motion.button 
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => setSelectedContract(null)} 
+                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                >
+                  Cancel
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => handleCompleteContract(selectedContract._id)}
+                  className="px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg shadow hover:shadow-md"
+                >
+                  Complete Contract
+                </motion.button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Dispute Modal */}
-      {selectedContract && disputeReason !== undefined && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
-            <h2 className="text-xl font-bold mb-4">File a Dispute</h2>
-            <p className="mb-4">Please explain the reason for filing a dispute:</p>
+      <AnimatePresence>
+        {selectedContract && disputeReason !== undefined && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+          >
+            <motion.div
+              ref={modalRef}
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="bg-white rounded-2xl p-6 max-w-md w-full shadow-xl"
+            >
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold text-gray-800">File a Dispute</h2>
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => setSelectedContract(null)}
+                  className="p-1 rounded-full hover:bg-gray-100"
+                >
+                  <X className="h-5 w-5 text-gray-500" />
+                </motion.button>
+              </div>
+              
+              <div className="bg-red-50 p-3 rounded-lg mb-4">
+                <div className="flex items-center mb-1">
+                  <AlertTriangle className="h-4 w-4 text-red-600 mr-1" />
+                  <p className="font-medium text-red-700">Warning</p>
+                </div>
+                <p className="text-red-600 text-sm">
+                  Filing a dispute will halt all payments and require administrative review. 
+                  Please try to resolve issues directly with the freelancer first.
+                </p>
+              </div>
+              
+              <h3 className="font-medium text-gray-700 mb-2">Explain your reason:</h3>
+              <textarea
+                value={disputeReason}
+                onChange={(e) => setDisputeReason(e.target.value)}
+                placeholder="Please provide details about why you're disputing this contract..."
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-all"
+                rows={4}
+                required
+              />
 
-            <textarea
-              value={disputeReason}
-              onChange={(e) => setDisputeReason(e.target.value)}
-              placeholder="Explain why you're disputing this contract..."
-              className="w-full p-2 border rounded"
-              rows={4}
-              required
-            />
-
-            <div className="flex justify-end space-x-3 mt-6">
-              <button onClick={() => setSelectedContract(null)} className="px-4 py-2 border rounded">
-                Cancel
-              </button>
-              <button
-                onClick={() => handleDisputeContract(selectedContract._id)}
-                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-                disabled={!disputeReason.trim()}
-              >
-                Submit Dispute
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+              <div className="flex justify-end space-x-3 mt-6">
+                <motion.button 
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => setSelectedContract(null)} 
+                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                >
+                  Cancel
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => handleDisputeContract(selectedContract._id)}
+                  className="px-4 py-2 bg-gradient-to-r from-red-600 to-pink-600 text-white rounded-lg shadow hover:shadow-md"
+                  disabled={!disputeReason.trim()}
+                >
+                  Submit Dispute
+                </motion.button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
 
 export default Contracts
-
