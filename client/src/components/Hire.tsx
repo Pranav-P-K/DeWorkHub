@@ -4,6 +4,10 @@
 
 import { useEffect, useState } from "react"
 import axios from "axios"
+import Web3Hiring from "./Web3Hiring"
+import Web3Dispute from "./Web3Dispute"
+import { motion } from "framer-motion"
+import { toast } from "sonner"
 
 interface Job {
   _id: string
@@ -49,6 +53,11 @@ const Hire = () => {
   const [showRatingModal, setShowRatingModal] = useState(false)
   const [showDisputeModal, setShowDisputeModal] = useState(false)
   const [disputeReason, setDisputeReason] = useState("")
+  const [showWeb3Hiring, setShowWeb3Hiring] = useState(false)
+  const [showWeb3Dispute, setShowWeb3Dispute] = useState(false)
+  const [selectedApplication, setSelectedApplication] = useState<Application | null>(null)
+  const [userRole, setUserRole] = useState<'Freelancer' | 'Company'>('Company')
+  const [budget, setBudget] = useState<number | null>(null)
 
   useEffect(() => {
     const fetchCompanyJobs = async () => {
@@ -210,6 +219,38 @@ const Hire = () => {
     } catch (error) {
       console.error("Error filing dispute:", error)
       alert("Failed to file dispute")
+    }
+  }
+
+  const handleWeb3Hire = (application: Application) => {
+    setSelectedApplication(application)
+    setShowWeb3Hiring(true)
+  }
+
+  const handleWeb3HireSuccess = () => {
+    setShowWeb3Hiring(false)
+    setSelectedApplication(null)
+    toast.success("Freelancer hired successfully on blockchain!")
+    
+    // Refresh data
+    if (selectedJob) {
+      fetchApplications(selectedJob)
+    }
+  }
+
+  const handleWeb3Dispute = (application: Application) => {
+    setSelectedApplication(application)
+    setShowWeb3Dispute(true)
+  }
+
+  const handleWeb3DisputeSuccess = () => {
+    setShowWeb3Dispute(false)
+    setSelectedApplication(null)
+    toast.success("Dispute handled successfully!")
+    
+    // Refresh data
+    if (selectedJob) {
+      fetchApplications(selectedJob)
     }
   }
 
@@ -457,6 +498,19 @@ const Hire = () => {
                       </>
                     )}
                   </button>
+
+                  {/* Web3 Hiring Button */}
+                  <motion.button
+                    onClick={() => handleWeb3Hire(application)}
+                    className="mt-3 py-2 px-6 rounded-lg flex items-center justify-center transition-all duration-300 transform hover:translate-y-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-md hover:shadow-lg"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                    </svg>
+                    Hire with Web3 Escrow
+                  </motion.button>
                 </div>
               ))}
             </div>
@@ -556,6 +610,64 @@ const Hire = () => {
                 Submit Dispute
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Web3 Hiring Modal */}
+      {showWeb3Hiring && selectedApplication && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl p-6 max-w-2xl w-full shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-bold text-gray-800">Hire with Web3 Escrow</h2>
+              <button
+                onClick={() => setShowWeb3Hiring(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <Web3Hiring
+              jobId={selectedApplication.jobId._id}
+              jobDetails={{
+                title: selectedApplication.jobId.title,
+                budget: budget || 0,
+                companyName: "Your Company"
+              }}
+              freelancerAddress="0x0000000000000000000000000000000000000000" // This should come from user profile
+              freelancerName={selectedApplication.freelancerId.name}
+              budget={budget || 0}
+              onHireSuccess={handleWeb3HireSuccess}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Web3 Dispute Modal */}
+      {showWeb3Dispute && selectedApplication && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl p-6 max-w-2xl w-full shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-bold text-gray-800">Web3 Dispute Resolution</h2>
+              <button
+                onClick={() => setShowWeb3Dispute(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <Web3Dispute
+              jobId={selectedApplication.jobId._id}
+              userRole={userRole}
+              onDisputeRaised={handleWeb3DisputeSuccess}
+              onDisputeResolved={handleWeb3DisputeSuccess}
+            />
           </div>
         </div>
       )}

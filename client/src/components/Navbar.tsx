@@ -89,6 +89,7 @@ const Navbar = () => {
                                     <NavLink href="/contracts" label="Contracts" />
                                     <NavLink href="/chat" label="Chat" />
                                     <NavLink href="/leaderboard" label="Leaderboard" />
+                                    <NavLink href="/profile" label="Profile" />
                                 </>
                             ) : user?.role === 'Company' ? (
                                 <>
@@ -96,6 +97,7 @@ const Navbar = () => {
                                     <NavLink href="/hire" label="Hire" />
                                     <NavLink href="/chat" label="Chat" />
                                     <NavLink href="/leaderboard" label="Leaderboard" />
+                                    <NavLink href="/profile" label="Profile" />
                                 </>
                             ) : null}
                         </div>
@@ -178,6 +180,7 @@ const Navbar = () => {
                             <MobileNavLink href="/contracts" label="Contracts" />
                             <MobileNavLink href="/chat" label="Chat" />
                             <MobileNavLink href="/leaderboard" label="Leaderboard" />
+                            <MobileNavLink href="/profile" label="Profile" />
                         </>
                     ) : user?.role === 'Company' ? (
                         <>
@@ -185,6 +188,7 @@ const Navbar = () => {
                             <MobileNavLink href="/hire" label="Hire" />
                             <MobileNavLink href="/chat" label="Chat" />
                             <MobileNavLink href="/leaderboard" label="Leaderboard" />
+                            <MobileNavLink href="/profile" label="Profile" />
                         </>
                     ) : null}
                 </div>

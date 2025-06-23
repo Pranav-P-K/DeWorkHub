@@ -5,6 +5,9 @@ import { useEffect, useState, useRef } from "react"
 import axios from "axios"
 import { StarIcon, DollarSign, Calendar, AlertTriangle, Check, X, ChevronRight, Loader2 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
+import Web3JobIntegration from "./Web3JobIntegration"
+import Web3Dispute from "./Web3Dispute"
+import { toast } from "sonner"
 
 interface Job {
   _id: string
@@ -44,6 +47,8 @@ const Contracts = () => {
   const [activeTab, setActiveTab] = useState<"all" | "ongoing" | "completed" | "disputed">("all")
   const [isRefreshing, setIsRefreshing] = useState(false)
   const modalRef = useRef<HTMLDivElement>(null)
+  const [showWeb3Complete, setShowWeb3Complete] = useState(false)
+  const [showWeb3Dispute, setShowWeb3Dispute] = useState(false)
 
   useEffect(() => {
     const fetchUserAndContracts = async () => {
@@ -154,6 +159,30 @@ const Contracts = () => {
     }
   }
 
+  const handleWeb3Complete = (contract: Contract) => {
+    setSelectedContract(contract)
+    setShowWeb3Complete(true)
+  }
+
+  const handleWeb3CompleteSuccess = () => {
+    setShowWeb3Complete(false)
+    setSelectedContract(null)
+    toast.success("Job completed successfully on blockchain!")
+    refreshContracts()
+  }
+
+  const handleWeb3Dispute = (contract: Contract) => {
+    setSelectedContract(contract)
+    setShowWeb3Dispute(true)
+  }
+
+  const handleWeb3DisputeSuccess = () => {
+    setShowWeb3Dispute(false)
+    setSelectedContract(null)
+    toast.success("Dispute handled successfully on blockchain!")
+    refreshContracts()
+  }
+
   const filteredContracts = contracts.filter(contract => {
     if (activeTab === "all") return true;
     return contract.status === activeTab;
@@ -226,6 +255,19 @@ const Contracts = () => {
                 <Check className="h-4 w-4" />
                 Complete Contract
               </motion.button>
+
+              {/* Web3 Complete Button */}
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => handleWeb3Complete(contract)}
+                className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-2 rounded-lg shadow-md hover:shadow-lg w-full flex items-center justify-center gap-2 font-medium"
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                Complete on Blockchain
+              </motion.button>
               
               <motion.button
                 whileHover={{ scale: 1.02 }}
@@ -238,6 +280,19 @@ const Contracts = () => {
               >
                 <AlertTriangle className="h-4 w-4" />
                 File Dispute
+              </motion.button>
+
+              {/* Web3 Dispute Button */}
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => handleWeb3Dispute(contract)}
+                className="bg-gradient-to-r from-orange-600 to-red-600 text-white px-4 py-2 rounded-lg shadow-md hover:shadow-lg w-full flex items-center justify-center gap-2 font-medium"
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                Dispute on Blockchain
               </motion.button>
             </>
           )}
@@ -590,6 +645,62 @@ const Contracts = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Web3 Complete Modal */}
+      {showWeb3Complete && selectedContract && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl p-6 max-w-2xl w-full shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-bold text-gray-800">Complete Job on Blockchain</h2>
+              <button
+                onClick={() => setShowWeb3Complete(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <Web3JobIntegration
+              mode="complete"
+              jobId={selectedContract.jobId._id}
+              jobDetails={{
+                title: selectedContract.jobId.title,
+                budget: selectedContract.escrowAmount,
+                companyName: selectedContract.companyId.name
+              }}
+              onSuccess={handleWeb3CompleteSuccess}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Web3 Dispute Modal */}
+      {showWeb3Dispute && selectedContract && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl p-6 max-w-2xl w-full shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-bold text-gray-800">Web3 Dispute Resolution</h2>
+              <button
+                onClick={() => setShowWeb3Dispute(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <Web3Dispute
+              jobId={selectedContract.jobId._id}
+              userRole={userRole || 'Company'}
+              onDisputeRaised={handleWeb3DisputeSuccess}
+              onDisputeResolved={handleWeb3DisputeSuccess}
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

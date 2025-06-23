@@ -3,6 +3,7 @@ import { useState, useRef } from 'react';
 import axios from 'axios';
 import { motion } from 'framer-motion';
 import { Briefcase, FileText, DollarSign, Tag, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import Web3JobIntegration from './Web3JobIntegration';
 
 const PostJobs = () => {
   const [title, setTitle] = useState('');
@@ -12,6 +13,8 @@ const PostJobs = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [showWeb3Integration, setShowWeb3Integration] = useState(false);
+  const [postedJobId, setPostedJobId] = useState<string | null>(null);
   const formRef = useRef<HTMLDivElement>(null);
   const [skillTags, setSkillTags] = useState<string[]>([]);
 
@@ -60,12 +63,19 @@ const PostJobs = () => {
         allSkills.push(requiredSkills.trim());
       }
 
-      await axios.post('/api/jobs', 
+      const response = await axios.post('/api/jobs', 
         { title, description, requiredSkills: allSkills, budget },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
+      // Store the job ID for Web3 integration
+      setPostedJobId(response.data._id);
       setShowSuccess(true);
+      
+      // Show Web3 integration after a short delay
+      setTimeout(() => {
+        setShowWeb3Integration(true);
+      }, 2000);
       
       // Reset form after submission
       setTimeout(() => {
@@ -75,7 +85,9 @@ const PostJobs = () => {
         setBudget('');
         setSkillTags([]);
         setShowSuccess(false);
-      }, 3000);
+        setShowWeb3Integration(false);
+        setPostedJobId(null);
+      }, 8000);
     } catch (error) {
       console.error('Error posting job:', error);
       // Show error toast
@@ -398,6 +410,24 @@ const PostJobs = () => {
           </motion.div>
         </div>
       </motion.div>
+
+      {/* Web3 Integration */}
+      {showWeb3Integration && postedJobId && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="mt-6"
+        >
+          <Web3JobIntegration
+            mode="post"
+            onSuccess={() => {
+              setShowWeb3Integration(false);
+              setPostedJobId(null);
+            }}
+          />
+        </motion.div>
+      )}
 
       <style jsx global>{`
         @keyframes shake {
